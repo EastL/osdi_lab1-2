@@ -184,7 +184,6 @@ void init(void)
 		close(0);
 		if (open("/etc/rc",O_RDONLY,0))
 			_exit(1);
-		printf("B042005\n");
 		execve("/bin/sh",argv_rc,envp_rc);
 		_exit(2);
 	}
@@ -202,6 +201,7 @@ void init(void)
 			(void) open("/dev/tty0",O_RDWR,0);
 			(void) dup(0);
 			(void) dup(0);
+			printf("B042005\n");
 			_exit(execve("/bin/sh",argv,envp));
 		}
 		while (1)
