@@ -68,9 +68,9 @@ go:	mov	%cs, %ax
 get_keystroke:
 	xor	%ah, %ah
 	int	$0x16
-	cmp	$0x2, %al
+	cmp	$0x32, %al
 	je	load_hello
-	cmp	$0x1, %al
+	cmp	$0x31, %al
 	je	load_setup
 	jmp	get_keystroke
 
