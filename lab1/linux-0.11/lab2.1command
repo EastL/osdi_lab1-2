@@ -1,0 +1,1 @@
+qemu-system-i386 -m 16M -boot menu=on,splash=table-tennis-temp-spot-image.jpg,splash-time=50000  -boot a  -fda Image -hda ../osdi.img  -bios ../../../seabios/out/bios.bin -serial stdio 
