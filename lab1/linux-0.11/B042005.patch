@@ -1,77 +1,154 @@
 diff --git a/lab1/linux-0.11/B042005.patch b/lab1/linux-0.11/B042005.patch
-index 420db35..e69de29 100644
---- a/lab1/linux-0.11/B042005.patch
-+++ b/lab1/linux-0.11/B042005.patch
-@@ -1,56 +0,0 @@
--diff --git a/lab1/linux-0.11/Makefile b/lab1/linux-0.11/Makefile
--index ddb5be1..1629240 100644
----- a/lab1/linux-0.11/Makefile
--+++ b/lab1/linux-0.11/Makefile
--@@ -34,11 +34,11 @@ MATH	=kernel/math/math.a
-- LIBS	=lib/lib.a
-- 
-- .c.s:
---@$(CC) $(CFLAGS) -S -o $*.s $<
--+	@$(CC) $(CFLAGS) -S -o $*.s $<
-- .s.o:
---@$(AS)  -o $*.o $<
--+	@$(AS)  -o $*.o $<
-- .c.o:
---@$(CC) $(CFLAGS) -c -o $*.o $<
--+	@$(CC) $(CFLAGS) -c -o $*.o $<
-- 
-- all:	Image	
-- 
--diff --git a/lab1/linux-0.11/include/linux/sched.h b/lab1/linux-0.11/include/linux/sched.h
--index 6b6e243..1057807 100644
----- a/lab1/linux-0.11/include/linux/sched.h
--+++ b/lab1/linux-0.11/include/linux/sched.h
--@@ -1,7 +1,7 @@
-- #ifndef _SCHED_H
-- #define _SCHED_H
-- 
---#define NR_TASKS 0
--+#define NR_TASKS 100
-- #define HZ 100
-- 
-- #define FIRST_TASK task[0]
--diff --git a/lab1/linux-0.11/init/main.c b/lab1/linux-0.11/init/main.c
--index 8660535..5b97ccd 100644
----- a/lab1/linux-0.11/init/main.c
--+++ b/lab1/linux-0.11/init/main.c
--@@ -137,7 +137,7 @@ void main(void)		/* This really IS void, no error here. */
-- 	hd_init();
-- 	floppy_init();
-- 	sti();
---	panic(""); 
--+//	panic(""); 
-- 	move_to_user_mode();
-- 	if (!fork()) {		/* we count on this going ok */
-- 		init();
--@@ -184,6 +184,7 @@ void init(void)
-- 		close(0);
-- 		if (open("/etc/rc",O_RDONLY,0))
-- 			_exit(1);
--+		printf("B042005\n");
-- 		execve("/bin/sh",argv_rc,envp_rc);
-- 		_exit(2);
-- 	}
--diff --git a/lab1/linux-0.11/tools/build.sh b/lab1/linux-0.11/tools/build.sh
--old mode 100644
--new mode 100755
+new file mode 100644
+index 0000000..e69de29
+diff --git a/lab1/linux-0.11/Makefile b/lab1/linux-0.11/Makefile
+index ddb5be1..76d17e0 100644
+--- a/lab1/linux-0.11/Makefile
++++ b/lab1/linux-0.11/Makefile
+@@ -34,19 +34,19 @@ MATH	=kernel/math/math.a
+ LIBS	=lib/lib.a
+ 
+ .c.s:
+-@$(CC) $(CFLAGS) -S -o $*.s $<
++	@$(CC) $(CFLAGS) -S -o $*.s $<
+ .s.o:
+-@$(AS)  -o $*.o $<
++	@$(AS)  -o $*.o $<
+ .c.o:
+-@$(CC) $(CFLAGS) -c -o $*.o $<
++	@$(CC) $(CFLAGS) -c -o $*.o $<
+ 
+ all:	Image	
+ 
+-Image: boot/bootsect boot/setup tools/system
++Image: boot/bootsect boot/setup tools/system boot/hello
+ 	@cp -f tools/system system.tmp
+ 	@strip system.tmp
+ 	@objcopy -O binary -R .note -R .comment system.tmp tools/kernel
+-	@tools/build.sh boot/bootsect boot/setup tools/kernel Image $(ROOT_DEV)
++	@tools/build.sh boot/bootsect boot/setup tools/kernel Image boot/hello  $(ROOT_DEV)
+ 	@rm system.tmp
+ 	@rm tools/kernel -f
+ 	@sync
+@@ -94,13 +94,16 @@ boot/setup: boot/setup.s
+ boot/bootsect: boot/bootsect.s
+ 	@make bootsect -C boot
+ 
++boot/hello: boot/hello.s
++	@make hello -C boot
++
+ tmp.s:	boot/bootsect.s tools/system
+ 	@(echo -n "SYSSIZE = (";ls -l tools/system | grep system \
+ 		| cut -c25-31 | tr '\012' ' '; echo "+ 15 ) / 16") > tmp.s
+ 	@cat boot/bootsect.s >> tmp.s
+ 
+ clean:
+-	@rm -f Image System.map tmp_make core boot/bootsect boot/setup
++	@rm -f Image System.map tmp_make core boot/bootsect boot/setup boot/hello
+ 	@rm -f init/*.o tools/system boot/*.o typescript* info bochsout.txt
+ 	@for i in mm fs kernel lib boot; do make clean -C $$i; done 
+ info:
+diff --git a/lab1/linux-0.11/boot/Makefile b/lab1/linux-0.11/boot/Makefile
+index c68e252..3491879 100644
+--- a/lab1/linux-0.11/boot/Makefile
++++ b/lab1/linux-0.11/boot/Makefile
+@@ -2,13 +2,17 @@ include ../Makefile.header
+ 
+ LDFLAGS	+= -Ttext 0
+ 
+-all: bootsect setup
++all: bootsect hello setup
+ 
+ bootsect: bootsect.s
+ 	@$(AS) -o bootsect.o bootsect.s
+ 	@$(LD) $(LDFLAGS) -o bootsect bootsect.o
+ 	@objcopy -R .pdr -R .comment -R.note -S -O binary bootsect
+ 
++hello: hello.s
++	@$(AS) -o hello.o hello.s -g
++	@$(LD) $(LDFLAGS) -o hello hello.o
++	@objcopy -R .pdr -R .comment -R.note -S -O binary hello
+ 
+ setup: setup.s
+ 	@$(AS) -o setup.o setup.s
+@@ -19,4 +23,4 @@ head.o: head.s
+ 	@$(AS) -o head.o head.s
+ 
+ clean:
+-	@rm -f bootsect bootsect.o setup setup.o head.o
++	@rm -f bootsect bootsect.o setup setup.o head.o hello hello.o
+diff --git a/lab1/linux-0.11/boot/bootsect.s b/lab1/linux-0.11/boot/bootsect.s
+index 94b1114..e496f32 100644
+--- a/lab1/linux-0.11/boot/bootsect.s
++++ b/lab1/linux-0.11/boot/bootsect.s
+@@ -65,9 +65,30 @@ go:	mov	%cs, %ax
+ # load the setup-sectors directly after the bootblock.
+ # Note that 'es' is already set up.
+ 
+-load_setup:
++get_keystroke:
++	xor	%ah, %ah
++	int	$0x16
++	cmp	$0x32, %al
++	je	load_hello
++	cmp	$0x31, %al
++	je	load_setup
++	jmp	get_keystroke
++
++load_hello:
++	mov	$0x0100, %ax
++	mov	%ax, %es
+ 	mov	$0x0000, %dx		# drive 0, head 0
+ 	mov	$0x0002, %cx		# sector 2, track 0
++	mov	$0x0000, %bx		# address = 0, in seg = 0x0100
++	mov     $0x0201, %ax		# service 2, nr of sectors
++	int	$0x13			# read it
++	ljmp	$0x0100, $0		# jump to 0x1000
++
++load_setup:
++	mov	$INITSEG, %ax		# fix extra segment to init segment
++	mov	%ax, %es
++	mov	$0x0000, %dx		# drive 0, head 0
++	mov	$0x0003, %cx		# sector 3, track 0
+ 	mov	$0x0200, %bx		# address = 512, in INITSEG
+ 	.equ    AX, 0x0200+SETUPLEN
+ 	mov     $AX, %ax		# service 2, nr of sectors
+@@ -147,7 +168,7 @@ root_defined:
+ #
+ # in:	es - starting address segment (normally 0x1000)
+ #
+-sread:	.word 1+ SETUPLEN	# sectors read of current track
++sread:	.word 2+ SETUPLEN	# sectors read of current track
+ head:	.word 0			# current head
+ track:	.word 0			# current track
+ 
+diff --git a/lab1/linux-0.11/include/linux/sched.h b/lab1/linux-0.11/include/linux/sched.h
+index 6b6e243..1057807 100644
+--- a/lab1/linux-0.11/include/linux/sched.h
++++ b/lab1/linux-0.11/include/linux/sched.h
+@@ -1,7 +1,7 @@
+ #ifndef _SCHED_H
+ #define _SCHED_H
+ 
+-#define NR_TASKS 0
++#define NR_TASKS 100
+ #define HZ 100
+ 
+ #define FIRST_TASK task[0]
 diff --git a/lab1/linux-0.11/init/main.c b/lab1/linux-0.11/init/main.c
-index 5b97ccd..24874fd 100644
+index 8660535..24874fd 100644
 --- a/lab1/linux-0.11/init/main.c
 +++ b/lab1/linux-0.11/init/main.c
-@@ -184,7 +184,6 @@ void init(void)
- 		close(0);
- 		if (open("/etc/rc",O_RDONLY,0))
- 			_exit(1);
--		printf("B042005\n");
- 		execve("/bin/sh",argv_rc,envp_rc);
- 		_exit(2);
- 	}
-@@ -202,6 +201,7 @@ void init(void)
+@@ -137,7 +137,7 @@ void main(void)		/* This really IS void, no error here. */
+ 	hd_init();
+ 	floppy_init();
+ 	sti();
+-	panic(""); 
++//	panic(""); 
+ 	move_to_user_mode();
+ 	if (!fork()) {		/* we count on this going ok */
+ 		init();
+@@ -201,6 +201,7 @@ void init(void)
  			(void) open("/dev/tty0",O_RDWR,0);
  			(void) dup(0);
  			(void) dup(0);
@@ -79,3 +156,45 @@ index 5b97ccd..24874fd 100644
  			_exit(execve("/bin/sh",argv,envp));
  		}
  		while (1)
+diff --git a/lab1/linux-0.11/table-tennis-temp-spot-image.jpg b/lab1/linux-0.11/table-tennis-temp-spot-image.jpg
+new file mode 100644
+index 0000000..d696e6a
+Binary files /dev/null and b/lab1/linux-0.11/table-tennis-temp-spot-image.jpg differ
+diff --git a/lab1/linux-0.11/tools/build.sh b/lab1/linux-0.11/tools/build.sh
+old mode 100644
+new mode 100755
+index d542a8f..ffc4b67
+--- a/lab1/linux-0.11/tools/build.sh
++++ b/lab1/linux-0.11/tools/build.sh
+@@ -7,7 +7,8 @@ bootsect=$1
+ setup=$2
+ system=$3
+ IMAGE=$4
+-root_dev=$5
++hello_img=$5
++root_dev=$6
+ 
+ # Set the biggest sys_size
+ # Changes from 0x20000 to 0x30000 by tigercn to avoid oversized code.
+@@ -26,15 +27,19 @@ fi
+ [ ! -f "$bootsect" ] && echo "there is no bootsect binary file there" && exit -1
+ dd if=$bootsect bs=512 count=1 of=$IMAGE 2>&1 >/dev/null
+ 
++# Write hello msg to stdout 
++[ ! -f "$hello_img" ] && echo "there is no hello binary file there" && exit -1
++dd if=$hello_img seek=1 bs=512 count=1 of=$IMAGE 2>&1 >/dev/null
++
+ # Write setup(4 * 512bytes, four sectors) to stdout
+ [ ! -f "$setup" ] && echo "there is no setup binary file there" && exit -1
+-dd if=$setup seek=1 bs=512 count=4 of=$IMAGE 2>&1 >/dev/null
++dd if=$setup seek=2 bs=512 count=4 of=$IMAGE 2>&1 >/dev/null
+ 
+ # Write system(< SYS_SIZE) to stdout
+ [ ! -f "$system" ] && echo "there is no system binary file there" && exit -1
+ system_size=`wc -c $system |cut -d" " -f1`
+ [ $system_size -gt $SYS_SIZE ] && echo "the system binary is too big" && exit -1
+-dd if=$system seek=5 bs=512 count=$((2888-1-4)) of=$IMAGE 2>&1 >/dev/null
++dd if=$system seek=6 bs=512 count=$((2888-1-4)) of=$IMAGE 2>&1 >/dev/null
+ 
+ # Set "device" for the root image file
+ echo -ne "\x$DEFAULT_MINOR_ROOT\x$DEFAULT_MAJOR_ROOT" | dd ibs=1 obs=1 count=2 seek=508 of=$IMAGE conv=notrunc  2>&1 >/dev/null
